@@ -56,7 +56,7 @@ defmodule Ntry do
       :retry ->
         schedule_next(func, handler, delays, context, result, nil)
 
-      {:retry, delay} when delay >= 0 ->
+      {:retry, delay} when is_integer(delay) and delay >= 0 ->
         schedule_next(func, handler, delays, context, result, delay)
 
       other ->
