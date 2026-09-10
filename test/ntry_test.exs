@@ -32,6 +32,31 @@ defmodule NtryTest do
     assert result == 43
   end
 
+  test "else block runs with the final context after retries are exhausted" do
+    result =
+      Ntry.retry fn ctx -> {:error, ctx.attempt} end,
+        max_attempts: 3,
+        delay: 0,
+        context: ctx do
+        {:error, _attempt} when ctx.attempt <= ctx.max_attempts -> :retry
+      else
+        {:exhausted, ctx.attempt, ctx.last_result}
+      end
+
+    assert result == {:exhausted, 3, {:error, 3}}
+  end
+
+  test "else block does not run when the handler halts" do
+    result =
+      Ntry.retry fn -> {:ok, 42} end, max_attempts: 3 do
+        {:ok, value} -> {:halt, value}
+      else
+        raise "else block must not run"
+      end
+
+    assert result == 42
+  end
+
   test "zero arity operations and one arity handlers remain supported" do
     assert Ntry.run(fn -> :value end, fn :value -> :halt end, []) == :value
   end

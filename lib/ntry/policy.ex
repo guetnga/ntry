@@ -5,6 +5,7 @@ defmodule Ntry.Policy do
             max_delay: :infinity,
             strategy: :fixed,
             jitter: false,
+            on_fail: nil,
             metadata: %{}
 
   def from_opts(opts) do
@@ -27,7 +28,8 @@ defmodule Ntry.Policy do
       non_negative_integer?(policy.base_delay) and
       (non_negative_integer?(policy.max_delay) or policy.max_delay == :infinity) and
       policy.strategy in [:fixed, :exponential, :linear] and
-      is_boolean(policy.jitter) and is_map(policy.metadata)
+      is_boolean(policy.jitter) and is_map(policy.metadata) and
+      (is_function(policy.on_fail, 1) or is_nil(policy.on_fail))
   end
 
   defp positive_integer?(value), do: is_integer(value) and value > 0
