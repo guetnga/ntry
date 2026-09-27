@@ -28,7 +28,11 @@ defmodule Ntry do
             unquote(clauses)
           end
         end,
-        Keyword.merge(unquote(opts), on_fail: fn unquote(context) -> unquote(on_fail) end)
+        Keyword.put(
+          unquote(opts),
+          :on_fail,
+          fn unquote(context) -> unquote(on_fail) end
+        )
       )
     end
   end
@@ -42,34 +46,24 @@ defmodule Ntry do
   end
 
   def run(func, handler, opts) do
-    case Policy.from_opts(opts) do
-      {:ok, policy} ->
-        do_run(
-          func,
-          handler,
-          Backoff.backoff(policy),
-          Context.new(policy),
-          Keyword.get(opts, :on_fail, nil)
-        )
-
-      {:error, :invalid_policy} = error ->
-        error
+    with {:ok, policy} <- Policy.from_opts(opts) do
+      run_with_policy(func, handler, policy)
     end
   end
 
+  defp run_with_policy(func, handler, policy) do
+    do_run(
+      func,
+      handler,
+      Backoff.backoff(policy),
+      Context.new(policy),
+      policy.on_fail
+    )
+  end
+
   defp do_run(func, handler, delays, context, on_fail) do
-    {result, decision} =
-      try do
-        result = if is_function(func, 1), do: func.(context), else: func.()
-
-        decision =
-          if is_function(handler, 2), do: handler.(result, context), else: handler.(result)
-
-        {result, decision}
-      catch
-        kind, reason ->
-          :erlang.raise(kind, reason, __STACKTRACE__)
-      end
+    result = call_operation(func, context)
+    decision = call_handler(handler, result, context)
 
     case decision do
       :halt ->
@@ -88,6 +82,14 @@ defmodule Ntry do
         raise ArgumentError, "invalid retry decision: #{inspect(other)}"
     end
   end
+
+  defp call_operation(func, context) when is_function(func, 1), do: func.(context)
+  defp call_operation(func, _context), do: func.()
+
+  defp call_handler(handler, result, context) when is_function(handler, 2),
+    do: handler.(result, context)
+
+  defp call_handler(handler, result, _context), do: handler.(result)
 
   defp schedule_next(_func, _handler, _delays, context, result, _override, on_fail)
        when context.attempt == context.max_attempts do

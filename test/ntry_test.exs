@@ -57,6 +57,24 @@ defmodule NtryTest do
     assert result == 42
   end
 
+  test "on_fail runs when supplied through a reusable policy" do
+    result =
+      Ntry.run(
+        fn -> :failed end,
+        fn _ -> :retry end,
+        with: [max_attempts: 1, delay: 0, on_fail: fn ctx -> {:exhausted, ctx.last_result} end]
+      )
+
+    assert result == {:exhausted, :failed}
+  end
+
+  test "else block overrides on_fail from a reusable policy" do
+    opts = [with: [max_attempts: 1, delay: 0, on_fail: fn _ -> :policy_fallback end]]
+
+    assert Ntry.retry(fn -> :failed end, opts, do: (_ -> :retry), else: :else_fallback) ==
+             :else_fallback
+  end
+
   test "zero arity operations and one arity handlers remain supported" do
     assert Ntry.run(fn -> :value end, fn :value -> :halt end, []) == :value
   end
@@ -83,7 +101,13 @@ defmodule NtryTest do
     assert policy.delay == 0
     assert policy.max_attempts == 3
 
-    for opts <- [[delay: nil], [max_attempts: :bad], [on: []], [jitter: "true"]] do
+    for opts <- [
+          [delay: nil],
+          [max_attempts: :bad],
+          [on: []],
+          [jitter: "true"],
+          [on_fail: fn -> :invalid_arity end]
+        ] do
       assert Ntry.Policy.from_opts(opts) == {:error, :invalid_policy}
     end
   end

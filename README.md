@@ -46,11 +46,33 @@ Ntry.retry fn context -> request(context.attempt) end,
 end
 ```
 
+An optional `else` block runs only when the handler requests another retry after the final
+attempt. It receives the final context through the name supplied in `:context`; at that point,
+`last_result` contains the result of the final attempt:
+
+```elixir
+Ntry.retry fn context -> request(context.attempt) end,
+  max_attempts: 3,
+  delay: 100,
+  context: context do
+  {:ok, value} -> {:halt, value}
+  {:error, :timeout} -> :retry
+else
+  {:exhausted, context.last_result}
+end
+
+# If all three attempts return {:error, :timeout}:
+# => {:exhausted, {:error, :timeout}}
+```
+
+The `else` block is not evaluated when the handler returns `:halt` or `{:halt, value}`.
+
 `Ntry.Context` contains:
 
 - `attempt` – the current attempt number, starting at `1`.
 - `max_attempts` – the configured maximum number of attempts.
-- `last_result` – the result of the previous attempt, or `nil` on the first attempt.
+- `last_result` – the result of the previous attempt, or `nil` on the first attempt. In an
+  exhaustion handler, it contains the result of the final attempt.
 - `metadata` – the map supplied through the policy's `:metadata` option.
 
 ## Function API
@@ -82,7 +104,29 @@ The handler must return one of the following decisions:
 - `:retry` – retry using the delay from the configured backoff strategy.
 - `{:retry, delay}` – retry after `delay` milliseconds instead of the configured delay.
 
-If the handler requests a retry after the final attempt, Ntry returns the final operation result.
+If the handler requests a retry after the final attempt, Ntry calls the one-arity `:on_fail`
+callback with the final context. Without an `:on_fail` callback, it returns the final operation
+result.
+
+The following functional call is equivalent to using the `else` block above:
+
+```elixir
+Ntry.run(
+  fn context -> request(context.attempt) end,
+  fn
+    {:ok, value}, _context -> {:halt, value}
+    {:error, :timeout}, _context -> :retry
+  end,
+  max_attempts: 3,
+  delay: 100,
+  on_fail: fn context ->
+    {:exhausted, context.last_result}
+  end
+)
+```
+
+The callback can also be placed in a reusable policy under `:with`.
+
 Exceptions, exits, and thrown values from the operation or handler are propagated to the caller.
 
 ## Policies
@@ -95,6 +139,8 @@ Available options:
 - `base_delay` – initial delay for linear and exponential strategies; defaults to `1000`.
 - `max_delay` – maximum delay for linear and exponential strategies; defaults to `:infinity`.
 - `metadata` – a map made available through `Ntry.Context`; defaults to `%{}`.
+- `on_fail` – a one-arity callback invoked with the final context when retries are exhausted;
+  defaults to `nil`. The `else` block of `Ntry.retry/3` defines this callback automatically.
 
 A reusable policy can be supplied through `:with`. Options specified alongside it take
 precedence:

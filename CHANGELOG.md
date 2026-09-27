@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Optional `else` block in `Ntry.retry/3` for handling exhausted retries.
+- One-arity `:on_fail` callback for `Ntry.run/3`, including support in reusable policies supplied
+  through `:with`.
+- Final retry context for exhaustion handlers, with `attempt` set to the last attempt and
+  `last_result` set to its result.
+
+### Changed
+
+- Retry exhaustion continues to return the final operation result when no `else` block or
+  `:on_fail` callback is configured.
+
 ## [0.1.0] - 2026-09-09
 
 ### Added

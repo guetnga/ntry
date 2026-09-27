@@ -23,14 +23,20 @@ defmodule Ntry.Policy do
   end
 
   defp valid?(policy) do
-    (positive_integer?(policy.max_attempts) or policy.max_attempts == :infinity) and
+    valid_max_attempts?(policy.max_attempts) and
       non_negative_integer?(policy.delay) and
       non_negative_integer?(policy.base_delay) and
-      (non_negative_integer?(policy.max_delay) or policy.max_delay == :infinity) and
+      valid_max_delay?(policy.max_delay) and
       policy.strategy in [:fixed, :exponential, :linear] and
       is_boolean(policy.jitter) and is_map(policy.metadata) and
       (is_function(policy.on_fail, 1) or is_nil(policy.on_fail))
   end
+
+  defp valid_max_attempts?(:infinity), do: true
+  defp valid_max_attempts?(value), do: positive_integer?(value)
+
+  defp valid_max_delay?(:infinity), do: true
+  defp valid_max_delay?(value), do: non_negative_integer?(value)
 
   defp positive_integer?(value), do: is_integer(value) and value > 0
   defp non_negative_integer?(value), do: is_integer(value) and value >= 0
