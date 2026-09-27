@@ -1,4 +1,7 @@
 defmodule Ntry.Backoff do
+  @moduledoc "Builds and advances retry delay streams."
+
+  @doc "Builds a delay stream for a retry policy."
   def backoff(policy) do
     initial = if policy.strategy == :fixed, do: policy.delay, else: policy.base_delay
 
@@ -23,6 +26,7 @@ defmodule Ntry.Backoff do
     end)
   end
 
+  @doc "Returns the next delay and a resumable cursor."
   def next({:cursor, continuation}) do
     continuation.({:cont, nil})
     |> next_delay()
@@ -35,6 +39,7 @@ defmodule Ntry.Backoff do
     |> next_delay()
   end
 
+  @doc "Closes a resumable delay cursor."
   def close({:cursor, continuation}) do
     continuation.({:halt, nil})
     :done

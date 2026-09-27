@@ -1,4 +1,6 @@
 defmodule Ntry.Policy do
+  @moduledoc "Defines and validates retry options."
+
   defstruct max_attempts: 3,
             delay: 1000,
             base_delay: 1000,
@@ -8,6 +10,7 @@ defmodule Ntry.Policy do
             on_fail: nil,
             metadata: %{}
 
+  @doc "Builds a validated policy from keyword options."
   def from_opts(opts) do
     with true <- Keyword.keyword?(opts),
          base <- Keyword.get(opts, :with, []),

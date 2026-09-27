@@ -1,6 +1,9 @@
 defmodule Ntry do
+  @moduledoc "Runs operations with configurable retries."
+
   alias Ntry.{Backoff, Context, Policy}
 
+  @doc "Retries an operation using result-matching clauses and an optional exhaustion handler."
   defmacro retry(func, opts, do: clauses) do
     {context, opts} = define_context(opts)
 
@@ -45,6 +48,7 @@ defmodule Ntry do
     end
   end
 
+  @doc "Runs an operation with a result handler and retry options."
   def run(func, handler, opts) do
     with {:ok, policy} <- Policy.from_opts(opts) do
       run_with_policy(func, handler, policy)

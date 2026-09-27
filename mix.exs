@@ -28,7 +28,8 @@ defmodule Ntry.MixProject do
 
   defp deps do
     [
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.4", only: :dev, runtime: false, warn_if_outdated: true}
     ]
   end
 
